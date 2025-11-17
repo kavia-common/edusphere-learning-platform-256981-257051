@@ -5,12 +5,17 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "^5.0.1"
+    "react-router-dom": "^6.26.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "react-scripts": "^5.0.1",
+    "zustand": "^4.5.2",
+    "date-fns": "^3.6.0",
+    "clsx": "^2.1.1"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "build": "REACT_APP_ENABLE_SOURCE_MAPS=${REACT_APP_ENABLE_SOURCE_MAPS:-false} react-scripts build",
+    "test": "react-scripts test --watchAll=false",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -29,6 +34,9 @@
     ]
   },
   "devDependencies": {
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^14.3.1",
+    "@testing-library/user-event": "^14.5.2"
   }
 }
