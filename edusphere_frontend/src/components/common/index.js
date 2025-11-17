@@ -3,7 +3,6 @@ export { VisuallyHidden } from "./skip/VisuallyHidden";
 export { ThemeToggle } from "./theme/ThemeToggle";
 export { Navbar } from "./nav/Navbar";
 export { Sidebar } from "./nav/Sidebar";
-export { GlassCard } from "./surfaces/GlassCard";
 export { IconButton } from "./inputs/IconButton";
 export { Badge } from "./data/Badge";
 export { Modal } from "./overlays/Modal";
