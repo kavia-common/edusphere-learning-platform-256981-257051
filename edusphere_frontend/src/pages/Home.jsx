@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/theme.css";
 import "../styles/glass.css";
@@ -10,14 +10,26 @@ import useLiveMetrics from "../hooks/useLiveMetrics";
 /**
  * PUBLIC_INTERFACE
  * Home - EduSphere landing page with immersive hero, interactive features, and live metrics.
- * - Hero: animated gradient background, particle canvas, typing headline, glow primary CTA, glass secondary CTA.
- * - Features: interactive glass cards with hover lift, gradient border shimmer, icon transitions, and progress demo.
- * - Accessibility: reduced motion support, ARIA landmarks/labels, focus-visible states.
+ * Adds runtime animation profile toggle and reduced-motion safeguards.
  */
 export default function Home() {
-  // Observe sections for reveal animations
-  const [heroRef, heroInView] = useIntersection({ threshold: 0.15 }, true);
-  const [featuresRef, featuresInView] = useIntersection({ threshold: 0.2 }, true);
+  // Reduced motion detection
+  const prefersReduced = useMemo(() => {
+    if (typeof window !== "undefined" && "matchMedia" in window) {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  }, []);
+
+  // Runtime animation profile (calm | default | lively)
+  const [animProfile, setAnimProfile] = useState("default");
+  useEffect(() => {
+    document.documentElement.setAttribute("data-anim", animProfile);
+  }, [animProfile]);
+
+  // Intersection hooks with delay/threshold and respect reduced motion
+  const hero = useIntersection({ once: true, threshold: 0.2, delay: prefersReduced ? 0 : 60, respectReducedMotion: true });
+  const features = useIntersection({ rootMargin: "0px 0px -10% 0px", threshold: 0.15, delay: prefersReduced ? 0 : 100, respectReducedMotion: true });
   const metrics = useLiveMetrics();
 
   // Typing headline content (progressive enhancement)
@@ -25,6 +37,22 @@ export default function Home() {
     () => "Immersive learning, real-time collaboration, and AI-powered insights.",
     []
   );
+
+  // Particle tuning per profile
+  const particleTuning = useMemo(() => {
+    if (prefersReduced) {
+      return { speed: 0.4, intensity: 0.5, reduceMotion: true };
+    }
+    switch (animProfile) {
+      case "calm":
+        return { speed: 0.75, intensity: 0.75, reduceMotion: false };
+      case "lively":
+        return { speed: 1.25, intensity: 1.2, reduceMotion: false };
+      case "default":
+      default:
+        return { speed: 1, intensity: 1, reduceMotion: false };
+    }
+  }, [animProfile, prefersReduced]);
 
   useEffect(() => {
     document.title = "EduSphere — Learn without limits";
@@ -34,16 +62,37 @@ export default function Home() {
     <main id="main-content" aria-labelledby="home-hero-heading">
       {/* HERO */}
       <section
-        ref={heroRef}
-        className={`relative hero-animated-bg overflow-hidden pt-20 pb-16 md:pt-28 md:pb-24 ${heroInView ? "reveal in-view" : "reveal"}`}
+        ref={hero.ref}
+        className={`relative hero-animated-bg overflow-hidden pt-20 pb-16 md:pt-28 md:pb-24 ${hero.visible ? "reveal in-view" : "reveal"}`}
         aria-label="Hero"
       >
-        <ParticleBackground density={50} />
+        <ParticleBackground
+          speed={particleTuning.speed}
+          intensity={particleTuning.intensity}
+          reduceMotion={particleTuning.reduceMotion}
+        />
         {/* Decorative glass nav tint to blend with existing navbar */}
         <div className="absolute inset-x-0 top-0 h-16 glass-nav" aria-hidden="true" />
 
         <div className="relative z-10 container mx-auto px-4">
           <div className="max-w-3xl">
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <label htmlFor="anim-profile" style={{ fontSize: 12, opacity: 0.8 }}>
+                Animation
+              </label>
+              <select
+                id="anim-profile"
+                value={animProfile}
+                onChange={(e) => setAnimProfile(e.target.value)}
+                aria-label="Select animation intensity"
+                style={{ fontSize: 12 }}
+              >
+                <option value="calm">Calm</option>
+                <option value="default">Default</option>
+                <option value="lively">Lively</option>
+              </select>
+            </div>
+
             <h1 id="home-hero-heading" className="text-4xl md:text-5xl font-extrabold tracking-tight" style={{ color: "var(--slate-900)" }}>
               EduSphere
             </h1>
@@ -120,8 +169,8 @@ export default function Home() {
 
       {/* FEATURES */}
       <section
-        ref={featuresRef}
-        className={`relative py-14 md:py-20 bg-white ${featuresInView ? "reveal in-view" : "reveal"}`}
+        ref={features.ref}
+        className={`relative py-14 md:py-20 bg-white ${features.visible ? "reveal in-view" : "reveal"}`}
         aria-labelledby="features-heading"
       >
         <div className="container mx-auto px-4">

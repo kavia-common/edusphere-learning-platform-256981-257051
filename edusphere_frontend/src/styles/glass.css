@@ -44,7 +44,7 @@
   color: var(--color-text);
 }
 
-/* NEW: General glass surface */
+/* General glass surface */
 .glass {
   backdrop-filter: saturate(180%) blur(14px);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
@@ -52,9 +52,15 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: var(--shadow-soft);
   border-radius: var(--radius-md);
+  transition: transform var(--anim-duration-base), box-shadow var(--anim-duration-base), background var(--anim-duration-base), border-color var(--anim-duration-base);
+  will-change: transform, box-shadow;
+}
+.glass:hover {
+  transform: translateY(calc(var(--hover-lift) * -1)) scale(var(--hover-scale));
+  box-shadow: 0 14px 40px rgba(37, 99, 235, calc(0.12 * var(--anim-intensity))), var(--shadow-soft);
 }
 
-/* NEW: Glass navigation with gradient tint */
+/* Glass navigation with gradient tint */
 .glass-nav {
   backdrop-filter: saturate(160%) blur(14px);
   -webkit-backdrop-filter: saturate(160%) blur(14px);
@@ -64,27 +70,27 @@
   border-bottom: 1px solid rgba(255,255,255,0.6);
 }
 
-/* NEW: Interactive glass card hover */
+/* Interactive glass card hover */
 .glass-card-hover {
-  transition: transform 300ms var(--ease-smooth), box-shadow 300ms var(--ease-smooth), background 300ms var(--ease-smooth);
+  transition: transform var(--anim-duration-base) var(--ease-smooth), box-shadow var(--anim-duration-base) var(--ease-smooth), background var(--anim-duration-base) var(--ease-smooth);
   will-change: transform, box-shadow;
 }
 .glass-card-hover:hover, .glass-card-hover:focus-within {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.10), var(--shadow-glow);
+  transform: translateY(calc(var(--hover-lift) * -3));
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.10), 0 0 24px rgba(37, 99, 235, var(--glow-strength));
   background: rgba(255, 255, 255, 0.75);
 }
 
-/* NEW: Icon hover transition */
+/* Icon hover transition */
 .icon-transition {
-  transition: transform 300ms var(--ease-smooth), filter 300ms var(--ease-smooth);
+  transition: transform var(--anim-duration-base) var(--ease-smooth), filter var(--anim-duration-base) var(--ease-smooth);
 }
 .glass-card-hover:hover .icon-transition, .glass-card-hover:focus-within .icon-transition {
   transform: scale(1.08) translateY(-2px) rotate(-2deg);
   filter: drop-shadow(0 6px 10px rgba(37,99,235,0.25));
 }
 
-/* NEW: Progress bar */
+/* Progress bar */
 .progress {
   position: relative;
   width: 100%;
@@ -98,9 +104,43 @@
   inset: 0;
   width: 0%;
   background: linear-gradient(90deg, var(--blue-400), var(--indigo-500), var(--teal-400));
-  animation: progress-anim 2.4s var(--ease-smooth) forwards;
+  animation: progress-anim calc(2.4s / var(--anim-speed-factor)) var(--ease-smooth) forwards;
 }
 @keyframes progress-anim {
   from { width: 0%; }
   to   { width: 100%; }
+}
+
+/* Glow utility using variable pulse duration and strength */
+.glow {
+  box-shadow: 0 0 0 0 rgba(37,99,235,0);
+  animation: glowPulse var(--anim-glow-pulse) ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+  50% { box-shadow: 0 10px 40px rgba(37,99,235, var(--glow-strength)); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+}
+
+/* Gradient shimmer utility for skeletons or accents */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  animation: shimmerMove var(--anim-shimmer-speed) linear infinite;
+}
+@keyframes shimmerMove {
+  100% { transform: translateX(100%); }
+}
+
+/* Reduced motion: disable continuous shimmer and glow */
+@media (prefers-reduced-motion: reduce) {
+  .glow { animation: none; }
+  .shimmer::after { animation: none; }
 }

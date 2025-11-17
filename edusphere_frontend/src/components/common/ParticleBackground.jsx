@@ -1,115 +1,170 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from "react";
 
 /**
- * Lightweight particle background using canvas.
- * Respects reduced-motion preference and cleans up on unmount.
+ * PUBLIC_INTERFACE
+ * ParticleBackground
+ * Lightweight particle field using canvas for the hero background.
  *
  * Props:
- * - density: number of particles (default 40)
- * - color: particle color (default rgba(37, 99, 235, 0.5) - Ocean Professional primary with alpha)
- * - className: extra classes for container
+ * - density: number (particles per pixel; default 0.00012)
+ * - maxRadius: number (max particle radius; default 2.4)
+ * - color: string (fill color; default rgba(37, 99, 235, 0.18))
+ * - interactive: boolean (mouse repulsion; default true)
+ * - speed: number (multiplier for velocity; default 1)
+ * - intensity: number (multiplier for count/size; default 1)
+ * - reduceMotion: boolean | undefined (force reduce motion; default undefined to defer to media query)
+ *
+ * Accessibility:
+ * - Respects prefers-reduced-motion: reduce by pausing animation or greatly reducing velocities.
+ * - Canvas is aria-hidden.
  */
-const ParticleBackground = ({ density = 40, color = 'rgba(37, 99, 235, 0.5)', className = '' }) => {
+const ParticleBackground = ({
+  density = 0.00012,
+  maxRadius = 2.4,
+  color = "rgba(37, 99, 235, 0.18)",
+  interactive = true,
+  speed = 1,
+  intensity = 1,
+  reduceMotion,
+  className = ""
+}) => {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
-  const particlesRef = useRef([]);
-  const prefersReducedMotion = typeof window !== 'undefined' &&
-    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mouseRef = useRef({ x: 0, y: 0, active: false });
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+  // Determine reduced motion
+  const prefersReduced = useMemo(() => {
+    if (typeof reduceMotion === "boolean") return reduceMotion;
+    if (typeof window !== "undefined" && "matchMedia" in window) {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  }, [reduceMotion]);
 
-    let width = canvas.width = canvas.offsetWidth;
-    let height = canvas.height = canvas.offsetHeight;
+  const createParticles = (w, h) => {
+    // apply intensity to count and max size
+    const baseCount = Math.max(8, Math.floor(w * h * density));
+    const count = Math.max(6, Math.floor(baseCount * Math.max(0.4, intensity)));
+    const scaledMaxRadius = Math.max(0.8, maxRadius * Math.max(0.5, Math.min(intensity, 1.5)));
 
-    const handleResize = () => {
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-      // re-seed particle positions on resize for consistency
-      seedParticles();
-    };
-    window.addEventListener('resize', handleResize);
+    return new Array(count).fill(0).map(() => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * scaledMaxRadius + 0.5,
+      vx: (Math.random() - 0.5) * 0.2 * speed * (prefersReduced ? 0.15 : 1),
+      vy: (Math.random() - 0.5) * 0.2 * speed * (prefersReduced ? 0.15 : 1),
+      alpha: 0.55 + Math.random() * 0.35,
+    }));
+  };
 
-    const seedParticles = () => {
-      const count = Math.max(12, Math.floor((width * height) / 25000)); // scale with area
-      const target = Math.min(density, count);
-      particlesRef.current = new Array(target).fill(0).map(() => ({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: Math.random() * 1.8 + 0.6,
-      }));
-    };
+  const drawFrame = (ctx, particles, w, h) => {
+    ctx.clearRect(0, 0, w, h);
 
-    seedParticles();
-
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      // gradient overlay for depth
-      const grad = ctx.createLinearGradient(0, 0, width, height);
-      grad.addColorStop(0, 'rgba(59, 130, 246, 0.06)'); // blue-500
-      grad.addColorStop(1, 'rgba(2, 6, 23, 0.04)'); // slate-950
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
-
-      // draw particles
-      particlesRef.current.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-
-        // connect near particles
-        particlesRef.current.forEach(q => {
-          const dx = p.x - q.x;
-          const dy = p.y - q.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > 0 && dist < 110) {
-            ctx.strokeStyle = color.replace('0.5', String(Math.max(0.05, 0.25 - dist / 440)));
-            ctx.lineWidth = 0.6;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(q.x, q.y);
-            ctx.stroke();
-          }
-        });
-
-        // update
+    // If reduced motion, draw static particles without continuous updates
+    const staticMode = prefersReduced;
+    particles.forEach((p) => {
+      if (!staticMode) {
         p.x += p.vx;
         p.y += p.vy;
 
-        // wrap around edges
-        if (p.x < -10) p.x = width + 10;
-        if (p.x > width + 10) p.x = -10;
-        if (p.y < -10) p.y = height + 10;
-        if (p.y > height + 10) p.y = -10;
-      });
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
 
-      animationRef.current = requestAnimationFrame(draw);
+        // light interactivity
+        if (interactive && mouseRef.current.active) {
+          const dx = p.x - mouseRef.current.x;
+          const dy = p.y - mouseRef.current.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 12000) {
+            p.vx += dx * -0.00003 * speed;
+            p.vy += dy * -0.00003 * speed;
+          }
+        }
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext("2d");
+
+    const resize = () => {
+      const ratio = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    resize();
+
+    let particles = createParticles(canvas.width, canvas.height);
+
+    let running = true;
+    const loop = () => {
+      if (!running) return;
+      drawFrame(ctx, particles, canvas.width, canvas.height);
+      if (prefersReduced) {
+        // Do not loop continuously on reduced motion; draw once and stop
+        running = false;
+        return;
+      }
+      animationRef.current = requestAnimationFrame(loop);
+    };
+    // Initial frame/loop
+    animationRef.current = requestAnimationFrame(loop);
+
+    const onResize = () => {
+      resize();
+      particles = createParticles(canvas.width, canvas.height);
+      // on reduced motion, redraw once
+      if (prefersReduced) {
+        drawFrame(ctx, particles, canvas.width, canvas.height);
+      }
     };
 
-    if (!prefersReducedMotion) {
-      animationRef.current = requestAnimationFrame(draw);
-    } else {
-      // paint static once for reduced motion users
-      draw();
+    const onMove = (e) => {
+      mouseRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        active: true,
+      };
+      if (prefersReduced) {
+        // draw once to reflect interaction without starting a loop
+        drawFrame(ctx, particles, canvas.width, canvas.height);
+      }
+    };
+    const onLeave = () => (mouseRef.current.active = false);
+
+    window.addEventListener("resize", onResize);
+    if (interactive) {
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseout", onLeave);
     }
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      running = false;
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseout", onLeave);
     };
-  }, [density, color, prefersReducedMotion]);
+  }, [density, maxRadius, color, interactive, speed, intensity, prefersReduced]);
 
   return (
-    <div className={`particle-container ${className}`} aria-hidden="true">
+    <div ref={containerRef} className={`particle-container ${className}`} aria-hidden="true">
       <canvas ref={canvasRef} className="particle-canvas" />
     </div>
   );
 };
 
-export default ParticleBackground;
+export default React.memo(ParticleBackground);
