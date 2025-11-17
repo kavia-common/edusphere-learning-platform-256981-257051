@@ -13,3 +13,4 @@ export { Pagination } from "./data/Pagination";
 export { DataTable } from "./data/DataTable";
 export { ProtectedRoute } from "./routing/ProtectedRoute";
 export { ProfileMenu } from "./nav/ProfileMenu";
+export { GlassCard } from "./surfaces/GlassCard";
