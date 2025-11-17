@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 
 /**
  * PUBLIC_INTERFACE
@@ -42,7 +42,8 @@ const ParticleBackground = ({
     return false;
   }, [reduceMotion]);
 
-  const createParticles = (w, h) => {
+  // Memoized particle generator depending on tunables
+  const createParticles = useCallback((w, h) => {
     // apply intensity to count and max size
     const baseCount = Math.max(8, Math.floor(w * h * density));
     const count = Math.max(6, Math.floor(baseCount * Math.max(0.4, intensity)));
@@ -56,9 +57,10 @@ const ParticleBackground = ({
       vy: (Math.random() - 0.5) * 0.2 * speed * (prefersReduced ? 0.15 : 1),
       alpha: 0.55 + Math.random() * 0.35,
     }));
-  };
+  }, [density, intensity, maxRadius, prefersReduced, speed]);
 
-  const drawFrame = (ctx, particles, w, h) => {
+  // Memoized draw routine
+  const drawFrame = useCallback((ctx, particles, w, h) => {
     ctx.clearRect(0, 0, w, h);
 
     // If reduced motion, draw static particles without continuous updates
@@ -90,7 +92,7 @@ const ParticleBackground = ({
       ctx.fill();
       ctx.globalAlpha = 1;
     });
-  };
+  }, [color, interactive, prefersReduced, speed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,7 +160,7 @@ const ParticleBackground = ({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseout", onLeave);
     };
-  }, [density, maxRadius, color, interactive, speed, intensity, prefersReduced]);
+  }, [createParticles, drawFrame, interactive, prefersReduced]);
 
   return (
     <div ref={containerRef} className={`particle-container ${className}`} aria-hidden="true">

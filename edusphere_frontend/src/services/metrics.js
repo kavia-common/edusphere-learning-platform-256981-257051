@@ -183,7 +183,7 @@ export async function fetchActiveLearnersCount() {
 
   // First attempt presence table count (distinct user_id)
   try {
-    const { data: presenceSample, error: presenceErr } = await client
+    const { error: presenceErr } = await client
       .from(METRICS_CONFIG.presenceTable)
       .select('user_id', { count: 'exact', head: true });
 
